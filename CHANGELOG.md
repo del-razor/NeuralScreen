@@ -54,12 +54,14 @@ Scope and honesty notes:
 * **ANR frame generation runtime (experimental).** Frame Generation can use
   Apex Compute's ANR runtime instead of DLSS: under the FG fold, Runtime ->
   Apex, then "Choose the file..." and pick `nvngx_dlssg.dll` from the ANR
-  package (`game/OptiScaler/custom/Apex Neural Rendering FG/dlssg`). The worker
-  loads it only when its Authenticode signature is Apex Compute, Inc.'s and it
-  chains to a machine root; NVIDIA's own check is unchanged. Tested on an RTX
-  4070 SUPER: ANR initialised and was refused its generator ("no program
-  installed" on the sRGB8 path), so the worker presented real frames only and
-  logged why. DLSS is the default and is unchanged.
+  package. The DLL needs its `programs` and `kernels` folders beside it, so
+  pick it from the complete `game/OptiScaler/custom/Apex Neural Rendering FG/dlssg`
+  folder, not from a copy of the DLL alone. The worker loads it only when its
+  Authenticode signature is Apex Compute, Inc.'s and it chains to a machine
+  root; NVIDIA's own check is unchanged. On an RTX 4070 SUPER ANR initialises
+  and generates frames, but in a test run the runtime released its generator
+  after one frame, without an error from either side. That is open; DLSS is
+  the default and is unchanged.
 
 ## v2.6.4 - 2026-10-27 - Still pictures in browsers and Photos stay idle, CJK text instead of boxes, a misplaced NR runtime is named
 
