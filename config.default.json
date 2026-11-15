@@ -71,6 +71,7 @@
   "keep_speed_when_hidden": true,
   "menu_show_pointer": true,
   "fg_ui_protect": false,
+  "fg_lite": false,
   "dim_on_rebuild": true,
   "interlace": false,
   "interlace_blend": true,

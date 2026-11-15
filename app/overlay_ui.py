@@ -470,6 +470,7 @@ class OverlayMenu:
             "keep_speed_when_hidden": True,
             "menu_show_pointer": True,
             "fg_ui_protect": False,
+            "fg_lite": False,
             "dim_on_rebuild": True,
             "interlace": False,
             "window_upscale": False,
@@ -2076,6 +2077,16 @@ class OverlayMenu:
                                           "Create diagnostic package"),
                                              "filled": False}))
                     cy += act_h + self._u(6)
+                    # Next to it, the other half of the same errand (#196): a
+                    # reporter had to find the program's folder by hand to
+                    # attach the package somewhere.
+                    items.append(Item("button", "diagnostics_open",
+                                      pygame.Rect(pad, cy, inner_w, act_h),
+                                      extra={"label": s.get(
+                                          "diagnostics_open",
+                                          "Open diagnostic package folder"),
+                                             "filled": False}))
+                    cy += act_h + self._u(6)
                 if show and about:
                     cy += self._u(6)
             if channel:
@@ -2158,8 +2169,18 @@ class OverlayMenu:
             def param_slider(key: str) -> None:
                 lo, hi = ranges.get(key) or PARAM_FALLBACK
                 val = float(params.get(key, 0.0))
+                value_text = f"{val:.2f}"
+                if key == "skin_structure" and val < 0.0:
+                    # Its "off" is -1, not 0 (settings_io.PARAM_RANGE: 0.0 is
+                    # a real middle value). A cell reading "0.00" over a filter
+                    # that is still working is exactly what issue #193 reported,
+                    # so the left end says what it is. No hint line here: on a
+                    # 4K work area with every fold open the page is already at
+                    # its limit, and one more line pushed the source segment
+                    # off the screen (test_ui_buttons).
+                    value_text = s.get("tile_off", "Off")
                 slider(key, float(lo), float(hi), val, s[key],
-                       value_text=f"{val:.2f}", mark=defaults.get(key))
+                       value_text=value_text, mark=defaults.get(key))
 
             param_slider("intensity")
 
@@ -2202,6 +2223,9 @@ class OverlayMenu:
                 toggle("fg_ui_protect", s.get("fg_ui_protect", "Protect the interface in FG"),
                        bool(self.state.get("fg_ui_protect", False)),
                        hint=s.get("fg_ui_protect_hint", ""))
+                toggle("fg_lite", s.get("fg_lite", "FG Lite"),
+                       bool(self.state.get("fg_lite", False)),
+                       hint=s.get("fg_lite_hint", ""))
             interlace_on = bool(self.state.get("interlace", False))
             interlace_summary = off_s
             if interlace_on:

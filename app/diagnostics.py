@@ -654,6 +654,7 @@ _SETTINGS_KEYS = (
     "interlace_blend", "interlace_black", "interlace_mode", "interlace_clean", "colour", "window_upscale",
     "lens_nr_only", "colour_nr_only", "nr_hold_repeats", "game_gpu_low",
     "fps_show_rate", "fps_show_latency", "fps_show_gpu",
+    "fg_lite",
     "window_follow", "nr_preset", "nr_on",
     "hotkeys_enabled",
     "menu_scale", "menu_scale_auto",

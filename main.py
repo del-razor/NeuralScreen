@@ -1322,6 +1322,7 @@ def main() -> int:
                            split=st.split_pos,
                            frame_generation=bool(st.cfg.get("frame_generation", False)),
                            frame_multiplier=fg_match.multiplier(st),
+                           fg_lite=bool(st.cfg.get("fg_lite", False)),
                            prepared=bool(st.gray_active) and not worker_scene,
                            early_reply=EARLY_REPLY, worker_scene=worker_scene)
                 _perf("send", t0)

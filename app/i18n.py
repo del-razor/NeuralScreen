@@ -2821,6 +2821,44 @@ STRINGS["uk"].update({"fg_ui_protect": 'Захист інтерфейсу у FG'
 STRINGS["zh"].update({"fg_ui_protect": 'FG 界面保护', "fg_ui_protect_hint": '静止的 HUD 和文字取自真实帧'})
 STRINGS["ja"].update({"fg_ui_protect": 'FG でインターフェースを保護', "fg_ui_protect_hint": '静止した HUD と文字は実フレームのまま'})
 STRINGS["ko"].update({"fg_ui_protect": 'FG 인터페이스 보호', "fg_ui_protect_hint": '고정 HUD와 텍스트는 실제 프레임 사용'})
+# The second half of the diagnostic-package errand (#196).
+STRINGS["en"].update({"diagnostics_open": "Open diagnostic package folder",
+                      "diagnostics_open_failed": "Could not open the folder with diagnostic packages"})
+STRINGS["ru"].update({"diagnostics_open": "Открыть папку с диагностическими пакетами",
+                      "diagnostics_open_failed": "Не удалось открыть папку с диагностическими пакетами"})
+STRINGS["fr"].update({"diagnostics_open": "Ouvrir le dossier des paquets de diagnostic",
+                      "diagnostics_open_failed": "Impossible d'ouvrir le dossier des paquets de diagnostic"})
+STRINGS["de"].update({"diagnostics_open": "Ordner der Diagnosepakete öffnen",
+                      "diagnostics_open_failed": "Der Ordner der Diagnosepakete ließ sich nicht öffnen"})
+STRINGS["es"].update({"diagnostics_open": "Abrir la carpeta de paquetes de diagnóstico",
+                      "diagnostics_open_failed": "No se pudo abrir la carpeta de paquetes de diagnóstico"})
+STRINGS["it"].update({"diagnostics_open": "Apri la cartella dei pacchetti diagnostici",
+                      "diagnostics_open_failed": "Impossibile aprire la cartella dei pacchetti diagnostici"})
+STRINGS["pt"].update({"diagnostics_open": "Abrir a pasta dos pacotes de diagnóstico",
+                      "diagnostics_open_failed": "Não foi possível abrir a pasta dos pacotes de diagnóstico"})
+STRINGS["pl"].update({"diagnostics_open": "Otwórz folder pakietów diagnostycznych",
+                      "diagnostics_open_failed": "Nie udało się otworzyć folderu pakietów diagnostycznych"})
+STRINGS["uk"].update({"diagnostics_open": "Відкрити теку з діагностичними пакетами",
+                      "diagnostics_open_failed": "Не вдалося відкрити теку з діагностичними пакетами"})
+STRINGS["zh"].update({"diagnostics_open": "打开诊断包文件夹",
+                      "diagnostics_open_failed": "无法打开诊断包文件夹"})
+STRINGS["ja"].update({"diagnostics_open": "診断パッケージのフォルダーを開く",
+                      "diagnostics_open_failed": "診断パッケージのフォルダーを開けませんでした"})
+STRINGS["ko"].update({"diagnostics_open": "진단 패키지 폴더 열기",
+                      "diagnostics_open_failed": "진단 패키지 폴더를 열 수 없습니다"})
+# FG Lite (DLSS-G preset C), from v2.6.5.
+STRINGS["en"].update({"fg_lite": 'FG Lite', "fg_lite_hint": 'cheaper generated frames (DLSS-G preset C)'})
+STRINGS["ru"].update({"fg_lite": 'FG Lite', "fg_lite_hint": 'более дешёвые сгенерированные кадры (пресет C DLSS-G)'})
+STRINGS["fr"].update({"fg_lite": 'FG Lite', "fg_lite_hint": 'images générées moins coûteuses (préréglage C de DLSS-G)'})
+STRINGS["de"].update({"fg_lite": 'FG Lite', "fg_lite_hint": 'günstigere erzeugte Bilder (DLSS-G-Preset C)'})
+STRINGS["es"].update({"fg_lite": 'FG Lite', "fg_lite_hint": 'fotogramas generados más baratos (preset C de DLSS-G)'})
+STRINGS["it"].update({"fg_lite": 'FG Lite', "fg_lite_hint": 'fotogrammi generati più leggeri (preset C di DLSS-G)'})
+STRINGS["pt"].update({"fg_lite": 'FG Lite', "fg_lite_hint": 'quadros gerados mais baratos (preset C do DLSS-G)'})
+STRINGS["pl"].update({"fg_lite": 'FG Lite', "fg_lite_hint": 'tańsze generowane klatki (preset C DLSS-G)'})
+STRINGS["uk"].update({"fg_lite": 'FG Lite', "fg_lite_hint": 'дешевші згенеровані кадри (пресет C DLSS-G)'})
+STRINGS["zh"].update({"fg_lite": 'FG Lite', "fg_lite_hint": '更省资源的生成帧（DLSS-G 预设 C）'})
+STRINGS["ja"].update({"fg_lite": 'FG Lite', "fg_lite_hint": '負荷の軽い生成フレーム（DLSS-G プリセット C）'})
+STRINGS["ko"].update({"fg_lite": 'FG Lite', "fg_lite_hint": '더 가벼운 생성 프레임 (DLSS-G 프리셋 C)'})
 # Redesign B (v2.6.0): the state tiles and the fold-out headers.
 STRINGS["en"].update({"tile_on": "On", "tile_off": "Off", "fold_net": "Network", "fold_tune": "Fine tuning", "fold_source": "Source and comparison"})
 STRINGS["ru"].update({"tile_on": "Вкл", "tile_off": "Выкл", "fold_net": "Сеть", "fold_tune": "Тонкая настройка", "fold_source": "Источник и сравнение"})
