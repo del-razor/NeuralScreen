@@ -63,10 +63,11 @@ static constexpr uint32_t kBadgeMagic = 0x45474442u;   // "BDGE"
 struct BadgeHeader
 {
     uint32_t magic, seq, w, h;
-    uint32_t corner;   // 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right
+    uint32_t corner;   // 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right, 4 custom
     uint32_t margin;   // from the frame's edges, frame pixels
-    uint32_t row;      // pushed down (top corners) or up by this much: the REC badge
-    uint32_t reserved;
+    uint32_t row;      // pushed down (top corners) or up by this much: the REC badge.
+                       // Custom: the height position, 0..1000 of the room the margins leave
+    uint32_t reserved; // Custom: the width position, 0..1000 of the same room
 };
 #pragma pack(pop)
 static_assert(sizeof(BadgeHeader) == 32, "BadgeHeader != badge.HEADER_FMT");
@@ -83,7 +84,7 @@ static struct BadgeState {
     ID3D12Resource *target = nullptr;     // the frame with the badge on it
     D3D12_RESOURCE_STATES target_state = D3D12_RESOURCE_STATE_COMMON;
     uint32_t seq = 0;                     // what the image holds
-    UINT w = 0, hgt = 0, corner = 1, margin = 0, row = 0;
+    UINT w = 0, hgt = 0, corner = 1, margin = 0, row = 0, reserved = 0;
     bool pending = false;                 // uploaded on the next pass
     bool image_fresh = true;              // the image texture is still in COMMON
     bool failed = false;
@@ -212,9 +213,10 @@ static bool BadgeRefresh()
     s.seq = head.seq;
     s.w = w;
     s.hgt = hgt;
-    s.corner = head.corner & 3u;
+    s.corner = head.corner <= 4u ? head.corner : 1u;
     s.margin = head.margin;
     s.row = head.row;
+    s.reserved = head.reserved;
     s.pending = true;
     return true;
 }
@@ -310,10 +312,24 @@ static ID3D12Resource *BadgeApply(ID3D12GraphicsCommandList *list, ID3D12Resourc
     const int fw = static_cast<int>(desc.Width), fh = static_cast<int>(desc.Height);
     const int m = static_cast<int>(s.margin), row = static_cast<int>(s.row);
     const int bw = static_cast<int>(s.w), bh = static_cast<int>(s.hgt);
-    const bool right = s.corner == 1 || s.corner == 3;
-    const bool bottom = s.corner >= 2;
-    const int ox = right ? fw - m - bw : m;
-    const int oy = bottom ? fh - m - bh - row : m + row;
+    int ox, oy;
+    if (s.corner == 4)
+    {
+        // Custom (display.py _badge_origin): the margins frame a room, and the
+        // two permille values place the badge inside it - 0 at the left or top
+        // margin, 1000 at the right or bottom one - so it never leaves the frame.
+        const long long room_w = (std::max)(0LL, static_cast<long long>(fw) - bw - 2LL * m);
+        const long long room_h = (std::max)(0LL, static_cast<long long>(fh) - bh - 2LL * m);
+        ox = m + static_cast<int>(room_w * (std::min)(s.reserved, 1000u) / 1000);
+        oy = m + static_cast<int>(room_h * (std::min)(s.row, 1000u) / 1000);
+    }
+    else
+    {
+        const bool right = s.corner == 1 || s.corner == 3;
+        const bool bottom = s.corner >= 2;
+        ox = right ? fw - m - bw : m;
+        oy = bottom ? fh - m - bh - row : m + row;
+    }
     // The frame as it is, then the badge over it.
     if (state != D3D12_RESOURCE_STATE_COPY_SOURCE)
     {

@@ -66,6 +66,25 @@ def main() -> int:
         if ratio < 3.0:
             failures.append(f"dark focus/{background} is only {ratio:.2f}:1")
 
+    # The Ember theme (the reference image's colours) meets the same floors
+    # for its text and focus. Its border is a quiet edge, as the dark theme's,
+    # so it is not held to the 3:1 field floor.
+    ember = THEMES["ember"]
+    for foreground, background in (
+            ("text", "bg"), ("text", "surface"),
+            ("muted", "bg"), ("muted", "surface"),
+            ("accent", "bg"), ("accent", "surface"),
+            ("ok", "bg"), ("danger", "bg")):
+        ratio = _contrast(ember[foreground], ember[background])
+        print(f"ember {foreground}/{background}: {ratio:.2f}:1")
+        if ratio < 4.5:
+            failures.append(f"ember {foreground}/{background} is {ratio:.2f}:1, below 4.5:1")
+    for background in ("bg", "surface"):
+        ratio = _contrast(ember["focus"], ember[background])
+        print(f"ember focus/{background}: {ratio:.2f}:1")
+        if ratio < 3.0:
+            failures.append(f"ember focus/{background} is only {ratio:.2f}:1")
+
     # Keep the visual language: the accent is recognisably red-clay, not a
     # generic blue accessibility patch.
     accent = tuple(int(light["accent"][pos:pos + 2], 16) for pos in (1, 3, 5))

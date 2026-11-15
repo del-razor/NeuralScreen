@@ -2576,23 +2576,72 @@ class Display:
 
     # -- HUD --------------------------------------------------------------
 
-    #: Where a corner badge goes, and how the config spells it.
-    BADGE_CORNERS = ("tl", "tr", "bl", "br")
+    #: Where a corner badge goes, and how the config spells it. "custom" is a
+    #: place the two sliders set (fps_overlay_x and fps_overlay_y), see
+    #: _badge_origin.
+    BADGE_CORNERS = ("tl", "tr", "bl", "br", "custom")
+    #: The counter's smallest size, in percent of the normal one (the slider).
+    BADGE_SCALE_MIN = 25
 
-    def _badge_origin(self, corner: str, w: int, h: int, row: int = 0) -> tuple[int, int]:
+    def _badge_origin(self, corner: str, w: int, h: int, row: int = 0,
+                      fx: float = 0.0, fy: float = 0.0) -> tuple[int, int]:
         """The top-left of a badge of size (w, h) in `corner`, `row` badges down.
 
         The margin is the same on every side, so two corners never look
         differently inset, and `row` stacks a second badge under the first
         instead of on top of it - REC and the counter can be asked for the
         same corner.
+
+        "custom" is placed by fx and fy (0..1): 0 is the margin at the left or
+        top, 1 the margin at the right or bottom, so the badge stays on the
+        screen wherever the sliders put it. The worker takes the same two
+        numbers and places the badge the same way (native/badge.inl).
         """
         m = int(round(14 * self.ui_scale))
+        if corner == "custom":
+            x = m + int(round(max(0, self.width - w - 2 * m) * fx))
+            y = m + int(round(max(0, self.height - h - 2 * m) * fy))
+            return x, y
         step = (h + int(round(8 * self.ui_scale))) * row
         x = m if corner in ("tl", "bl") else self.width - w - m
         y = (m + step if corner in ("tl", "tr")
              else self.height - h - m - step)
         return x, y
+
+    def _badge_scale(self) -> float:
+        """The counter's size as a fraction of the normal one (fps_overlay_scale)."""
+        try:
+            percent = int(self._hud.get("fps_overlay_scale", 100))
+        except (TypeError, ValueError):
+            percent = 100
+        return min(100, max(self.BADGE_SCALE_MIN, percent)) / 100.0
+
+    def _badge_font(self, scale: float):
+        """The counter's face at `scale` of the normal size, cached per size.
+
+        Rendered at its own size rather than shrunk after the fact, so a small
+        counter stays as sharp as a font that size can be.
+        """
+        size = max(6, int(round(self.font_size * scale)))
+        if size == self.font_size:
+            return self._font
+        cache = getattr(self, "_badge_fonts", None)
+        if cache is None or cache[0] != (self._lang, self.font_size):
+            cache = self._badge_fonts = ((self._lang, self.font_size), {})
+        if size not in cache[1]:
+            cache[1][size] = self._load_font(size=size, mono=True)
+        return cache[1][size]
+
+    def _badge_place(self) -> tuple[float, float]:
+        """Where the custom counter sits: fps_overlay_x and fps_overlay_y, 0..1."""
+        out = []
+        for key, default in (("fps_overlay_x", 1.0), ("fps_overlay_y", 0.0)):
+            try:
+                value = float(self._hud.get(key, default))
+            except (TypeError, ValueError):
+                value = default
+            out.append(min(1.0, max(0.0, value)))
+        return out[0], out[1]
 
     def _draw_fps_badge(self) -> None:
         """The rate on screen, with the menu closed (#109).
@@ -2635,17 +2684,21 @@ class Display:
             if sink is not None:
                 sink.hide()
             return
+        # The size slider scales the face, the padding and the corners alike.
+        scale = self._badge_scale()
         text = "   ".join(readings)
-        surf = self._font.render(text, True, self._rgb(self.theme["text"]))
-        pad_x = int(round(10 * self.ui_scale))
-        pad_y = int(round(6 * self.ui_scale))
+        surf = self._badge_font(scale).render(text, True, self._rgb(self.theme["text"]))
+        pad_x = int(round(10 * self.ui_scale * scale))
+        pad_y = int(round(6 * self.ui_scale * scale))
         w = surf.get_width() + pad_x * 2
         h = surf.get_height() + pad_y * 2
         # Under the REC badge when both want the top-right: a recording that
         # hides the counter would be the one moment the counter matters most.
         row = 1 if (corner == "tr" and self._hud.get("recording")
                     and self._hud.get("rec_indicator", True)) else 0
-        radius = int(round(8 * self.ui_scale))
+        radius = int(round(8 * self.ui_scale * scale))
+        border = max(1, int(round(self.ui_scale * scale)))
+        fx, fy = self._badge_place()
         if sink is not None:
             # The worker draws it into the presented picture (app/badge.py):
             # the HUD layer then holds nothing that changes, and a flip of it
@@ -2655,7 +2708,7 @@ class Display:
             pygame.draw.rect(badge, self._rgb(self.theme["bg"]), box,
                              border_radius=radius)
             pygame.draw.rect(badge, self._rgb(self.theme["border"]), box,
-                             max(1, int(round(self.ui_scale))), border_radius=radius)
+                             border, border_radius=radius)
             badge.blit(surf, (pad_x, pad_y))
             # The shared bitmap has a fixed width, and the channel cuts anything
             # wider at the wrong row length, which shears the picture.
@@ -2664,18 +2717,23 @@ class Display:
                 w = badge_channel.WIDTH
                 badge = pygame.transform.smoothscale(badge, (w, h))
             margin = int(round(14 * self.ui_scale))
-            step = (h + int(round(8 * self.ui_scale))) * row
-            sink.publish(pygame.image.tobytes(badge, "RGBA_PREMULT"), w, h,
-                         corner, margin, step)
+            pixels = pygame.image.tobytes(badge, "RGBA_PREMULT")
+            if corner == "custom":
+                # The worker places it from two permille values, not a corner.
+                sink.publish(pixels, w, h, corner, margin,
+                             badge_channel.permille(fy),
+                             x_permille=badge_channel.permille(fx))
+                return
+            step = (h + int(round(8 * self.ui_scale * scale))) * row
+            sink.publish(pixels, w, h, corner, margin, step)
             return
         self._layer_drawn = True
-        x, y = self._badge_origin(corner, w, h, row)
+        x, y = self._badge_origin(corner, w, h, row, fx, fy)
         rect = pygame.Rect(x, y, w, h)
         pygame.draw.rect(self.screen, self._rgb(self.theme["bg"]), rect,
                          border_radius=radius)
         pygame.draw.rect(self.screen, self._rgb(self.theme["border"]), rect,
-                         max(1, int(round(self.ui_scale))),
-                         border_radius=radius)
+                         border, border_radius=radius)
         self.screen.blit(surf, (x + pad_x, y + pad_y))
 
     def _draw_rec_indicator(self) -> None:

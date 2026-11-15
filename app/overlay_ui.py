@@ -26,7 +26,8 @@ import pygame
 
 from i18n import STRINGS
 from resolution_limits import safe_processing_size
-from settings_io import FG_MULTIPLIER_MAX, THEME_NAMES
+from settings_io import (FG_MULTIPLIER_MAX, FPS_OVERLAY_CORNER_XY, FPS_OVERLAY_SCALE_MAX,
+                         FPS_OVERLAY_SCALE_MIN, THEME_NAMES)
 
 # --- Themes. The accent is shared; background and text change ------------
 THEMES = {
@@ -77,6 +78,25 @@ THEMES = {
         "danger": "#FF5A5A",
         "focus": "#00FFA3",
         "slider_fill": "#2CD685",
+    },
+    # The reference image's colours (a dark dashboard): charcoal panels, the
+    # orange-to-gold of its gauges and bars as the accent, and its blue ring
+    # for values. Every text pair clears WCAG AA: text 15.6:1 on bg, muted
+    # 6.2:1 on surface, the accent 5.5:1 on bg.
+    "ember": {
+        "bg": "#181818",
+        "surface": "#242424",
+        "border": "#5E5E5E",      # ~2.4:1 against surface, a quiet edge
+        "text": "#F0F0F0",
+        "muted": "#A3A3A3",
+        "accent": "#F06400",      # the image's orange
+        "ok": "#7FD18B",
+        # Recording stays red on every theme (the contrast theme's rule).
+        "danger": "#FF5A4A",
+        "focus": "#FFB070",       # a lighter ember ring, never colour-only
+        # The ring's blue for the track fill: a value, not a state, so the
+        # orange stays reserved for state.
+        "slider_fill": "#2A84D2",
     },
 }
 
@@ -458,6 +478,9 @@ class OverlayMenu:
             "gpu_record": True,
             # Which corner the on-screen counter sits in, or "off" (#109).
             "fps_overlay": "off",
+            "fps_overlay_scale": 100,
+            "fps_overlay_x": 1.0,
+            "fps_overlay_y": 0.0,
             "notifications": "all",
             "process_priority": "normal",
             # What the taskbar's minimise and close buttons do (#93).
@@ -2261,10 +2284,25 @@ class OverlayMenu:
             # The frame counter: where it sits, and what it shows.
             fps_corner = str(self.state.get("fps_overlay", "off"))
             corner_marks = {"tl": "\u2196", "tr": "\u2197", "bl": "\u2199", "br": "\u2198"}
-            if fold("fps", "FPS", corner_marks.get(fps_corner, off_s)):
+            fps_custom = s.get("fps_custom", "Custom")
+            if fold("fps", "FPS", fps_custom if fps_corner == "custom"
+                    else corner_marks.get(fps_corner, off_s)):
                 segmented("fps_overlay", s.get("fps_overlay", "Frame counter"), fps_corner,
-                          ["off", "tl", "tr", "bl", "br"],
-                          labels=["\u2014", "\u2196", "\u2197", "\u2199", "\u2198"])
+                          ["off", "tl", "tr", "bl", "br", "custom"],
+                          labels=["\u2014", "\u2196", "\u2197", "\u2199", "\u2198", fps_custom])
+                # The size, then the place: the two position sliders put the
+                # counter at a custom spot, 0..1 of the room the margins leave.
+                fps_scale = min(FPS_OVERLAY_SCALE_MAX, max(FPS_OVERLAY_SCALE_MIN, int(
+                    float(self.state.get("fps_overlay_scale", 100)))))
+                fps_x = min(1.0, max(0.0, float(self.state.get("fps_overlay_x", 1.0))))
+                fps_y = min(1.0, max(0.0, float(self.state.get("fps_overlay_y", 0.0))))
+                slider("fps_overlay_scale", float(FPS_OVERLAY_SCALE_MIN),
+                       float(FPS_OVERLAY_SCALE_MAX), float(fps_scale),
+                       s.get("fps_size", "Size"), value_text=f"{fps_scale}%")
+                slider("fps_overlay_x", 0.0, 1.0, fps_x, s.get("fps_x", "Horizontal"),
+                       value_text=f"{round(fps_x * 100)}%")
+                slider("fps_overlay_y", 0.0, 1.0, fps_y, s.get("fps_y", "Vertical"),
+                       value_text=f"{round(fps_y * 100)}%")
                 for show_key, fallback in (("fps_show_rate", "Frame rate"),
                                            ("fps_show_latency", "Latency"),
                                            ("fps_show_gpu", "GPU usage")):
@@ -3275,8 +3313,12 @@ class OverlayMenu:
                 return [("interlace_mode", value)]
             return []
         if key == "fps_overlay":
-            if value in ("off", "tl", "tr", "bl", "br"):
+            if value in ("off", "tl", "tr", "bl", "br", "custom"):
                 self.state["fps_overlay"] = value
+                # A corner also moves the sliders to it (commands.py does the same).
+                if value in FPS_OVERLAY_CORNER_XY:
+                    (self.state["fps_overlay_x"],
+                     self.state["fps_overlay_y"]) = FPS_OVERLAY_CORNER_XY[value]
                 return [("fps_overlay", value)]
             return []
         if key in _CONVERT_SEGMENTS:
@@ -3332,7 +3374,7 @@ class OverlayMenu:
     def _step_slider(self, item: Item, direction: int) -> list[tuple]:
         """Move a focused slider by one meaningful keyboard step."""
         step = (1 if item.key == "frame_multiplier"
-                else 5 if item.key in ("frame_limit_custom", "lens_fov")
+                else 5 if item.key in ("frame_limit_custom", "lens_fov", "fps_overlay_scale")
                 else 0.05)
         return self._set_slider_value(item, item.value + direction * step)
 
@@ -3345,6 +3387,27 @@ class OverlayMenu:
             item.value = value
             self.state["frame_multiplier"] = value
             return [("frame_multiplier", value)]
+        if item.key == "fps_overlay_scale":
+            # The counter's size, in whole percent, applied as the knob moves.
+            value = min(FPS_OVERLAY_SCALE_MAX, max(FPS_OVERLAY_SCALE_MIN, int(round(value))))
+            if value == item.value:
+                return []
+            item.value = value
+            self.state["fps_overlay_scale"] = value
+            item.extra["value_text"] = f"{value}%"
+            return [("fps_overlay_scale", value)]
+        if item.key in ("fps_overlay_x", "fps_overlay_y"):
+            # The counter's own place, in 1% steps. Moving either one makes the
+            # counter custom: the place is the sliders' now, not the corner's.
+            value = round(min(1.0, max(0.0, value)), 2)
+            if abs(value - item.value) < 1e-9:
+                return []
+            item.value = value
+            self.state[item.key] = value
+            self.state["fps_overlay"] = "custom"
+            item.extra["value_text"] = f"{round(value * 100)}%"
+            return [("fps_overlay_place", self.state["fps_overlay_x"],
+                     self.state["fps_overlay_y"])]
         if item.key == "frame_limit_custom":
             value = min(240, max(15, int(value + 0.5)))
             if value == item.value:

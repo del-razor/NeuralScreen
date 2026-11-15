@@ -1682,7 +1682,7 @@ def apply_menu_action(st, action: tuple) -> None:
     elif kind == "toggle" and action[1] == "fps_overlay":
         # The tile: back in the corner it was last in.
         now = str(st.cfg.get("fps_overlay", "off"))
-        if now != "off":
+        if now in settings_io.FPS_OVERLAY_CORNERS:
             st.cfg["fps_overlay_corner"] = now
         st.cfg["fps_overlay"] = ("off" if now != "off"
                                  else str(st.cfg.get("fps_overlay_corner", "tr")))
@@ -1691,14 +1691,32 @@ def apply_menu_action(st, action: tuple) -> None:
         print(f"[main] on-screen frame counter -> {st.cfg['fps_overlay']}")
     elif kind == "fps_overlay":
         corner = str(action[1])
-        if corner not in ("off", "tl", "tr", "bl", "br"):
+        if corner not in settings_io.FPS_OVERLAY_MODES:
             print(f"[main] invalid counter corner: {action[1]!r}",
                   file=sys.stderr)
             return
         st.cfg["fps_overlay"] = corner
-        if corner != "off":
+        if corner in settings_io.FPS_OVERLAY_CORNERS:
+            # A corner also moves the sliders to where it sits, so they show
+            # the place the counter is really in.
             st.cfg["fps_overlay_corner"] = corner
+            x, y = settings_io.FPS_OVERLAY_CORNER_XY[corner]
+            st.cfg["fps_overlay_x"], st.cfg["fps_overlay_y"] = x, y
+            st.display.menu.set_state({"fps_overlay_x": x, "fps_overlay_y": y})
         print(f"[main] on-screen frame counter -> {corner}")
+    elif kind == "fps_overlay_scale":
+        # The size slider, applied as it moves: a number in its range, always.
+        st.cfg["fps_overlay_scale"] = int(round(settings_io.clamped_number(
+            action[1], 100, settings_io.FPS_OVERLAY_SCALE_MIN,
+            settings_io.FPS_OVERLAY_SCALE_MAX)))
+        settings_io.save_menu_layout(st)
+    elif kind == "fps_overlay_place":
+        # The X and Y sliders: a place of their own, which makes the counter
+        # custom. Saved with the rest of the panel's layout.
+        st.cfg["fps_overlay_x"] = settings_io.clamped_number(action[1], 1.0, 0.0, 1.0)
+        st.cfg["fps_overlay_y"] = settings_io.clamped_number(action[2], 0.0, 0.0, 1.0)
+        st.cfg["fps_overlay"] = "custom"
+        settings_io.save_menu_layout(st)
     elif kind == "menu_scale":
         # The menu has already applied it to itself. It lands in st.cfg here
         # for the same reason the theme does: a rebuild between now and the

@@ -30,6 +30,27 @@ Scope and honesty notes:
 
 ---
 
+## Unreleased - v2.7.0 with the v2.6.5 changes, a counter you can place, an Ember theme
+
+* **FG Lite (new, off by default).** Network -> "FG Lite" asks DLSS Frame
+  Generation for its preset C (`DLSSG.LiteCandidateBlendingEnabled`): cheaper
+  generated frames. Ported from perseval-BLR v2.6.5; the change recreates FG,
+  like a new multiplier. Carried in bit 0x40 of the frame header.
+* **The panel opens the diagnostic package folder (#196).** Settings ->
+  Program -> Create diagnostic package -> "Open diagnostic package folder".
+* **Skin structure names its own off (#193).** Its left end reads "Off".
+* **The log says whether NR was on (#194).** The `[env] switches:` line read a
+  key nothing writes, so it said "NR on" in every session.
+* **The on-screen counter can be sized and placed (FPS fold).** "Size" takes
+  it from 100% (the size it always was) down to 25%. "Horizontal" and
+  "Vertical" put it anywhere on the screen, 0% at the left or top margin and
+  100% at the right or bottom one, so it never leaves the picture. Moving
+  either slider chooses "Custom"; a corner preset moves the sliders to its
+  corner. The worker draws the counter from the header's corner 4 (native/badge.inl).
+* **Ember theme.** Charcoal panels, the orange of the reference dashboard as
+  the accent and its blue as the value fill. Text meets WCAG AA. It follows
+  Contrast in the theme cycle.
+
 ## v2.6.4 - 2026-10-27 - Still pictures in browsers and Photos stay idle, CJK text instead of boxes, a misplaced NR runtime is named
 
 * **Chinese, Japanese and Korean show as text, not boxes (#186).** The CJK

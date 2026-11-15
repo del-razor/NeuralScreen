@@ -869,6 +869,9 @@ def main() -> int:
             # No readings from before the rest, with the panel open either: the
             # counter has nothing to say until frames run again.
             st.display.set_hud({"fps_overlay": str(st.cfg.get("fps_overlay", "off")),
+                                "fps_overlay_scale": int(st.cfg.get("fps_overlay_scale", 100)),
+                                "fps_overlay_x": float(st.cfg.get("fps_overlay_x", 1.0)),
+                                "fps_overlay_y": float(st.cfg.get("fps_overlay_y", 0.0)),
                                 "nr": False, "gpu_ok": st.gpu_ok, "fps": 0.0,
                                 "output_fps": 0.0})
             if st.display.menu.visible:
@@ -1746,6 +1749,10 @@ def main() -> int:
                 "rec_indicator": bool(st.cfg.get("rec_indicator", True)),
                 # Which corner the counter sits in, or "off" (#109).
                 "fps_overlay": str(st.cfg.get("fps_overlay", "off")),
+                # Its size, and its custom place (fps_overlay_x / _y), 0..1.
+                "fps_overlay_scale": int(st.cfg.get("fps_overlay_scale", 100)),
+                "fps_overlay_x": float(st.cfg.get("fps_overlay_x", 1.0)),
+                "fps_overlay_y": float(st.cfg.get("fps_overlay_y", 0.0)),
                 # The live switch positions, carried with every frame so the
                 # on-screen badge and the panel read the state the pipeline is
                 # really in. They used to be read from the menu snapshot, which

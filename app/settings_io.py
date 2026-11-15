@@ -171,7 +171,7 @@ PRESET_NAME_PREFIX = "Preset"
 #: Named THEME_NAMES, not THEMES: overlay_ui.THEMES is the palette dict, and
 #: two meanings of one name in the same import graph is how this class of
 #: bug starts.
-THEME_NAMES = ("light", "dark", "contrast")
+THEME_NAMES = ("light", "dark", "contrast", "ember")
 
 
 # The global hotkeys live in hotkeys.py (RegisterHotKey). The layout and the
@@ -389,6 +389,29 @@ CONFIG_SCHEMA_VERSION = 1
 FRAME_LIMIT_MODES = ("30", "60", "custom", "unlimited")
 FRAME_LIMIT_CUSTOM_MIN = 15
 FRAME_LIMIT_CUSTOM_MAX = 240
+
+#: The on-screen frame counter (#109). fps_overlay is "off", one of the four
+#: corners, or "custom": the place fps_overlay_x and fps_overlay_y set, 0..1 of
+#: the room the margins leave (0 = left or top, 1 = right or bottom). A corner
+#: pick also sets x and y to that corner, so the sliders show where it sits.
+FPS_OVERLAY_MODES = ("off", "tl", "tr", "bl", "br", "custom")
+FPS_OVERLAY_CORNERS = ("tl", "tr", "bl", "br")
+FPS_OVERLAY_CORNER_XY = {"tl": (0.0, 0.0), "tr": (1.0, 0.0),
+                         "bl": (0.0, 1.0), "br": (1.0, 1.0)}
+#: The counter's size in percent of the normal one (the slider's range).
+FPS_OVERLAY_SCALE_MIN = 25
+FPS_OVERLAY_SCALE_MAX = 100
+
+
+def clamped_number(value, default: float, lo: float, hi: float) -> float:
+    """The value as a float in [lo, hi]; the default when it is not a finite number."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    if not math.isfinite(number):
+        return default
+    return min(hi, max(lo, number))
 
 # The conversion page's output choices, as config values. The same lists as
 # media_convert's - repeated here rather than imported, because media_convert
@@ -860,12 +883,17 @@ def _validate_config(cfg: dict) -> dict:
         _fallback("notifications", cfg.get("notifications"), "all",
                   "is not one of all/errors/none")
         cfg["notifications"] = "all"
-    if cfg.get("fps_overlay") not in ("off", "tl", "tr", "bl", "br"):
+    if cfg.get("fps_overlay") not in FPS_OVERLAY_MODES:
         _fallback("fps_overlay", cfg.get("fps_overlay"), "off",
-                  "is not one of off/tl/tr/bl/br")
+                  "is not one of off/tl/tr/bl/br/custom")
         cfg["fps_overlay"] = "off"
-    if cfg.get("fps_overlay_corner") not in ("tl", "tr", "bl", "br"):
+    if cfg.get("fps_overlay_corner") not in FPS_OVERLAY_CORNERS:
         cfg["fps_overlay_corner"] = "tr"
+    # Size and custom place: numbers inside their ranges, else the defaults.
+    cfg["fps_overlay_scale"] = int(round(clamped_number(
+        cfg.get("fps_overlay_scale"), 100, FPS_OVERLAY_SCALE_MIN, FPS_OVERLAY_SCALE_MAX)))
+    cfg["fps_overlay_x"] = clamped_number(cfg.get("fps_overlay_x"), 1.0, 0.0, 1.0)
+    cfg["fps_overlay_y"] = clamped_number(cfg.get("fps_overlay_y"), 0.0, 0.0, 1.0)
     # The fisheye lens's field of view: a number in degrees inside the range
     # the worker honours. Anything else - a string, NaN - is the default.
     fov = cfg.get("lens_fov", LENS_FOV_DEFAULT)
@@ -1301,6 +1329,9 @@ def _menu_layout_payload(cfg: dict, params: dict, monitor: int, lang: str,
         "gpu_record": cfg.get("gpu_record", True) is not False,
         "fps_overlay": str(cfg.get("fps_overlay", "off")),
         "fps_overlay_corner": str(cfg.get("fps_overlay_corner", "tr")),
+        "fps_overlay_scale": int(cfg.get("fps_overlay_scale", 100)),
+        "fps_overlay_x": float(cfg.get("fps_overlay_x", 1.0)),
+        "fps_overlay_y": float(cfg.get("fps_overlay_y", 0.0)),
         "notifications": str(cfg.get("notifications", "all")),
         "process_priority": str(cfg.get("process_priority", "normal")),
         "lens": bool(cfg.get("lens", False)),
@@ -1886,6 +1917,9 @@ def menu_payload(st) -> dict:
         "rec_indicator": bool(st.cfg.get("rec_indicator", True)),
         "gpu_record": st.cfg.get("gpu_record", True) is not False,
         "fps_overlay": str(st.cfg.get("fps_overlay", "off")),
+        "fps_overlay_scale": int(st.cfg.get("fps_overlay_scale", 100)),
+        "fps_overlay_x": float(st.cfg.get("fps_overlay_x", 1.0)),
+        "fps_overlay_y": float(st.cfg.get("fps_overlay_y", 0.0)),
         "notifications": str(st.cfg.get("notifications", "all")),
         "process_priority": str(st.cfg.get("process_priority", "normal")),
         "lens": bool(st.cfg.get("lens", False)),

@@ -2107,7 +2107,7 @@ STRINGS = {
         "style_2": "シネマ",
         "theme_light": "ライト",
         "theme_dark": "ダーク",
-        "theme_contrast": "コントラスト",
+        "theme_contrast": "高対比",
         "hk_nr": "Neural Rendering オン/オフ",
         "hk_menu": "メニュー",
         "hk_shot": "スクリーンショット",
@@ -2859,6 +2859,32 @@ STRINGS["uk"].update({"fg_lite": 'FG Lite', "fg_lite_hint": 'дешевші зг
 STRINGS["zh"].update({"fg_lite": 'FG Lite', "fg_lite_hint": '更省资源的生成帧（DLSS-G 预设 C）'})
 STRINGS["ja"].update({"fg_lite": 'FG Lite', "fg_lite_hint": '負荷の軽い生成フレーム（DLSS-G プリセット C）'})
 STRINGS["ko"].update({"fg_lite": 'FG Lite', "fg_lite_hint": '더 가벼운 생성 프레임 (DLSS-G 프리셋 C)'})
+# The on-screen counter's size and custom place (v2.7.x): the fold's labels.
+STRINGS["en"].update({"fps_custom": "Custom", "fps_size": "Size", "fps_x": "Horizontal", "fps_y": "Vertical"})
+STRINGS["ru"].update({"fps_custom": "Своё", "fps_size": "Размер", "fps_x": "По горизонтали", "fps_y": "По вертикали"})
+STRINGS["fr"].update({"fps_custom": "Personnalisé", "fps_size": "Taille", "fps_x": "Horizontale", "fps_y": "Verticale"})
+STRINGS["de"].update({"fps_custom": "Eigene", "fps_size": "Größe", "fps_x": "Horizontal", "fps_y": "Vertikal"})
+STRINGS["es"].update({"fps_custom": "Personalizado", "fps_size": "Tamaño", "fps_x": "Horizontal", "fps_y": "Vertical"})
+STRINGS["it"].update({"fps_custom": "Personalizzato", "fps_size": "Dimensione", "fps_x": "Orizzontale", "fps_y": "Verticale"})
+STRINGS["pt"].update({"fps_custom": "Personalizado", "fps_size": "Tamanho", "fps_x": "Horizontal", "fps_y": "Vertical"})
+STRINGS["pl"].update({"fps_custom": "Własny", "fps_size": "Rozmiar", "fps_x": "Poziomo", "fps_y": "Pionowo"})
+STRINGS["uk"].update({"fps_custom": "Своє", "fps_size": "Розмір", "fps_x": "По горизонталі", "fps_y": "По вертикалі"})
+STRINGS["zh"].update({"fps_custom": "自定义", "fps_size": "大小", "fps_x": "水平", "fps_y": "垂直"})
+STRINGS["ja"].update({"fps_custom": "カスタム", "fps_size": "サイズ", "fps_x": "水平", "fps_y": "垂直"})
+STRINGS["ko"].update({"fps_custom": "사용자 지정", "fps_size": "크기", "fps_x": "가로", "fps_y": "세로"})
+# The Ember theme's name in the Program tab and on the Theme tile (v2.7.x).
+STRINGS["en"].update({"theme_ember": "Ember"})
+STRINGS["ru"].update({"theme_ember": "Угли"})
+STRINGS["fr"].update({"theme_ember": "Braise"})
+STRINGS["de"].update({"theme_ember": "Glut"})
+STRINGS["es"].update({"theme_ember": "Brasas"})
+STRINGS["it"].update({"theme_ember": "Braci"})
+STRINGS["pt"].update({"theme_ember": "Brasas"})
+STRINGS["pl"].update({"theme_ember": "Żar"})
+STRINGS["uk"].update({"theme_ember": "Жар"})
+STRINGS["zh"].update({"theme_ember": "余烬"})
+STRINGS["ja"].update({"theme_ember": "残り火"})
+STRINGS["ko"].update({"theme_ember": "잔불"})
 # Redesign B (v2.6.0): the state tiles and the fold-out headers.
 STRINGS["en"].update({"tile_on": "On", "tile_off": "Off", "fold_net": "Network", "fold_tune": "Fine tuning", "fold_source": "Source and comparison"})
 STRINGS["ru"].update({"tile_on": "Вкл", "tile_off": "Выкл", "fold_net": "Сеть", "fold_tune": "Тонкая настройка", "fold_source": "Источник и сравнение"})

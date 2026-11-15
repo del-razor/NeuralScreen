@@ -49,11 +49,11 @@ def main() -> int:
     settings_io.save_menu_layout = lambda st: saved.append(st.cfg["theme"]) or True
     try:
         with contextlib.redirect_stdout(io.StringIO()):
-            for _ in range(3):
+            for _ in range(4):
                 commands.apply_menu_action(st, ("toggle", "theme"))
     finally:
         settings_io.save_menu_layout = real_save
-    if saved != ["dark", "contrast", "light"]:
+    if saved != ["dark", "contrast", "ember", "light"]:
         failures.append(f"the themes went {saved}")
     if menu.state.get("theme") != "light":
         failures.append(f"the menu was left on {menu.state.get('theme')}")
