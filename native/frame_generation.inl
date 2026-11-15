@@ -105,6 +105,9 @@ static unsigned g_fg_count = 1;
 // -36% at 6x on RTX 40/50. A create-time parameter, so a change recreates FG
 // the way a new multiplier does. Bit 0x40 of the frame header, off unless set.
 static bool g_fg_lite = false;
+// The ANR runtime (NS_FG_APEX_DLL) ships only its preset-C (lite) programs,
+// so it is asked for that preset whatever the panel says.
+static bool g_fg_apex_runtime = false;
 static constexpr uint32_t FRAME_FLAG_FG_LITE = 0x40u;
 // What we actually ask the runtime for, 0-based: 1 = 2x, 3 = 4x, 5 = 6x.
 //
@@ -457,6 +460,31 @@ static bool EnsureFg(VideoState &v, DXGI_FORMAT format)
     CloseFgResources();
     if (!g_fg.module)
     {
+        // ANR FG (Apex Compute): the runtime the user chose in the panel
+        // reaches the worker as NS_FG_APEX_DLL. It loads only when its
+        // Authenticode signature is Apex Compute's and chains to a machine
+        // root - the same gate the NVIDIA runtimes pass, for a different
+        // signer. Refused or missing, the NVIDIA runtime below is used.
+        wchar_t apex_path[MAX_PATH * 2] = {};
+        if (GetEnvironmentVariableW(L"NS_FG_APEX_DLL", apex_path, MAX_PATH * 2) > 0)
+        {
+            if (GetFileAttributesW(apex_path) != INVALID_FILE_ATTRIBUTES
+                && NsTrustedDllFor(apex_path, kApexSignerCn, nullptr))
+            {
+                // The runtime finds its own data packs beside it: resolve its
+                // dependencies from its folder, not from the worker's.
+                g_fg.module = LoadLibraryExW(apex_path, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
+                if (g_fg.module)
+                {
+                    g_fg_apex_runtime = true;
+                    Log("[fg] FG runtime: ANR, signed by Apex Compute, Inc. (%ls)", apex_path);
+                }
+                else
+                    Log("[fg] ANR FG load failed: %lu", GetLastError());
+            }
+            else
+                Log("[fg] ANR FG refused: %ls is missing or not signed by Apex Compute, Inc. - using the bundled NVIDIA runtime", apex_path);
+        }
         // The BYO library folder next to the worker, then the worker's own
         // directory: users drop nvngx_dlssg.dll into native\libraries\ to
         // pick the build they want, and native\ stays the bundled fallback.
@@ -498,6 +526,7 @@ static bool EnsureFg(VideoState &v, DXGI_FORMAT format)
         // the next FG switch-on skipped this block and called create on a
         // runtime never initialised, through params that could be null.
         auto unload = [] {
+            g_fg_apex_runtime = false;
             if (g_fg.params) { NVSDK_NGX_D3D12_DestroyParameters(g_fg.params); g_fg.params = nullptr; }
             g_fg.create = nullptr; g_fg.release = nullptr; g_fg_evaluate = nullptr;
             FreeLibrary(g_fg.module); g_fg.module = nullptr;
@@ -545,7 +574,7 @@ static bool EnsureFg(VideoState &v, DXGI_FORMAT format)
     p->Set(NVSDK_NGX_DLSSG_Parameter_DynamicResolution, 0u);
     // Set either way: a runtime without the key ignores it, and "0" keeps a
     // recreated feature from inheriting the last session's choice.
-    p->Set("DLSSG.LiteCandidateBlendingEnabled", g_fg_lite ? 1u : 0u);
+    p->Set("DLSSG.LiteCandidateBlendingEnabled", (g_fg_lite || g_fg_apex_runtime) ? 1u : 0u);
     if (!BeginCommands()) return false;
     const auto result = FgCreateGuarded(g_fg.create, h.list, p, &g_fg.feature);
     if (g_fg_fault != 0)

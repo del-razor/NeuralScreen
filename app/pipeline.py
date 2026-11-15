@@ -1044,6 +1044,24 @@ def apply_spout(st, enabled: bool) -> None:
         "Spout2 output ON" if enabled else "Spout2 output OFF"))
 
 
+def apply_fg_provider(st, provider: str, path: str | None = None) -> None:
+    """Switch the frame generation runtime: the worker must be restarted.
+
+    The worker reads NS_FG_APEX_DLL when it creates frame generation, and the
+    runtime it loads stays loaded for that worker's life - so a change is a
+    fresh worker, the same path as the Spout bridge (apply_spout).
+    """
+    st.cfg["fg_provider"] = provider
+    if path is not None:
+        st.cfg["fg_apex_dll"] = path
+    settings_io.apply_fg_provider_env(st.cfg)
+    settings_io.save_menu_layout(st)
+    print(f"[main] frame generation runtime: {provider} - restarting the worker")
+    teardown_pipeline(st)
+    rebuild_pipeline(st, UI_STRINGS[st.lang].get(
+        "fg_provider_switched", "Frame generation runtime changed"))
+
+
 def _same_monitor(a: int, b: int) -> bool:
     """Whether two windows are on the same monitor (nearest, as Windows says)."""
     user32 = ctypes.windll.user32

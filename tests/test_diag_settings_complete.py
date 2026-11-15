@@ -48,6 +48,7 @@ WITHHELD = {
     "recording_dir": "a filesystem path",
     "screenshot_dir": "a filesystem path",
     "convert_dir": "a filesystem path",
+    "fg_apex_dll": "a filesystem path (the ANR runtime the user chose)",
     "menu_offset": "where the user dragged the panel - geometry, not config",
     "menu_height": "the same",
     "width": "the output resolution, already in the log header and `monitor`",

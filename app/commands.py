@@ -254,7 +254,7 @@ def drain_save_dialog(st) -> None:
             if (isinstance(answer, tuple) and len(answer) == 2
                     and answer[0] in (
                         "save", "screenshot_dir", "recording_dir", "diagnostics",
-                        "convert_pick", "convert_dir")):
+                        "convert_pick", "convert_dir", "fg_apex_dll")):
                 kind, shot_path = answer
             else:
                 # Backward compatibility for tests and older producers.
@@ -268,6 +268,15 @@ def drain_save_dialog(st) -> None:
                     shot_path = [shot_path]
                 if shot_path:
                     add_conversions(st, shot_path)
+                continue
+            if kind == "fg_apex_dll":
+                # The picker answered. A file switches the runtime (a fresh
+                # worker loads it); a cancel leaves the choice on DLSS.
+                if shot_path:
+                    pipeline.apply_fg_provider(st, "apex", str(shot_path))
+                else:
+                    st.cfg["fg_provider"] = "dlss"
+                    st.display.menu.set_state({"fg_provider": "dlss"})
                 continue
             if kind == "diagnostics":
                 ok, detail = shot_path
@@ -585,6 +594,27 @@ def pick_convert_files(st) -> None:
         st.shot_paths.put(("convert_pick", chosen))
 
     threading.Thread(target=_pick, name="convert-picker", daemon=True).start()
+
+
+def pick_apex_dll(st) -> None:
+    """The ANR runtime's picker, off the UI thread (it is modal)."""
+    if st.shot_dialog_open:
+        return
+    st.shot_dialog_open = True
+    # pygame is not thread-safe: the handle is read here, on the main thread.
+    hwnd = st.display.get_hwnd()
+    title = UI_STRINGS[st.lang].get("fg_apex_title",
+                                    "Choose nvngx_dlssg.dll from the Apex package")
+
+    def _pick() -> None:
+        try:
+            chosen = dialogs.ask_open_dll(hwnd, None, title)
+        except Exception as exc:
+            print(f"[main] the runtime picker crashed: {exc}", file=sys.stderr)
+            chosen = None
+        st.shot_paths.put(("fg_apex_dll", chosen))
+
+    threading.Thread(target=_pick, name="apex-picker", daemon=True).start()
 
 
 def convert_row_action(st, name: str) -> None:
@@ -1704,6 +1734,20 @@ def apply_menu_action(st, action: tuple) -> None:
             st.cfg["fps_overlay_x"], st.cfg["fps_overlay_y"] = x, y
             st.display.menu.set_state({"fps_overlay_x": x, "fps_overlay_y": y})
         print(f"[main] on-screen frame counter -> {corner}")
+    elif kind == "fg_provider":
+        provider = str(action[1])
+        if provider not in settings_io.FG_PROVIDERS:
+            print(f"[main] invalid frame generation runtime: {provider!r}", file=sys.stderr)
+            return
+        if provider == "apex" and not st.cfg.get("fg_apex_dll"):
+            # Apex needs its file first: the picker answers, and the switch
+            # happens then (drain_save_dialog). Until then the panel shows
+            # the choice with no file, and the worker keeps DLSS.
+            st.cfg["fg_provider"] = "apex"
+            st.display.menu.set_state({"fg_provider": "apex"})
+            pick_apex_dll(st)
+            return
+        pipeline.apply_fg_provider(st, provider)
     elif kind == "fps_overlay_scale":
         # The size slider, applied as it moves: a number in its range, always.
         st.cfg["fps_overlay_scale"] = int(round(settings_io.clamped_number(
@@ -1872,6 +1916,8 @@ def apply_menu_action(st, action: tuple) -> None:
             pick_convert_files(st)
         elif name == "convert_dir":
             open_folder_picker(st, "convert_dir")
+        elif name == "fg_apex_pick":
+            pick_apex_dll(st)
         elif name == "convert_clear":
             if st.convert_queue is not None:
                 st.convert_queue.clear_finished()

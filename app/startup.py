@@ -49,7 +49,7 @@ from pipeline import require_compatibility, start_worker
 from protocol import SharedFrameBuffer, WorkerReader
 from recorder import VideoRecorder
 import window_scale
-from settings_io import (APP_VERSION, THEME_NAMES, _work_size, cascade_passes,
+from settings_io import (APP_VERSION, THEME_NAMES, _work_size, apply_fg_provider_env, cascade_passes,
                          clean_per_pass, hotkey_labels,
                          load_config, load_presets, resolve_params,
                          restore_menu_extras)
@@ -604,6 +604,7 @@ def configure(st) -> None:
     st.params = resolve_params(st.cfg)
     st.presets = load_presets(st.cfg)
     _apply_nr_dll(st.cfg)
+    apply_fg_provider_env(st.cfg)
     _log_environment(st.cfg)
     # A copy for the About block: the module-level dict is filled by the
     # probe above, and the menu reads it off the state like everything else.

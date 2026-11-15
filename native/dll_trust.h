@@ -51,6 +51,11 @@ static const wchar_t *kTrustedSignerCn = L"NVIDIA Corporation";
 // rename).
 static const wchar_t *kTrustedProductPrefix = L"NVIDIA";
 
+// The one other signer the program accepts, for the ANR frame generation
+// runtime the user chooses (Apex Compute, Inc.). That runtime carries no
+// version resource, so its gate checks the signer and the chain only.
+static const wchar_t *kApexSignerCn = L"Apex Compute, Inc.";
+
 // Handles kept open until the process exits, so the verified bytes are the
 // bytes LoadLibrary maps.
 static HANDLE g_trusted_file_handles[8] = {};
@@ -150,9 +155,14 @@ static PCCERT_CONTEXT NsLeafCertificate(const wchar_t *path,
 
 // Verify a DLL's Authenticode signature end to end: valid chain to a
 // machine root, NVIDIA signer, NVIDIA product name. True = loadable.
-static bool NsTrustedDllHeld(const wchar_t *path, HANDLE hold);
+static bool NsTrustedDllHeld(const wchar_t *path, HANDLE hold,
+                             const wchar_t *signer_cn, const wchar_t *product_prefix);
 
-static bool NsTrustedDll(const wchar_t *path)
+// The gate for one signer: `signer_cn` is the certificate's display name, and
+// `product_prefix` the version resource's ProductName prefix, or nullptr for a
+// runtime that carries no version resource (the signer is then the whole check).
+static bool NsTrustedDllFor(const wchar_t *path, const wchar_t *signer_cn,
+                            const wchar_t *product_prefix)
 {
     // ---- the anti-swap hold, first -------------------------------------
     if (g_trusted_file_count >= (int)(sizeof(g_trusted_file_handles)
@@ -162,7 +172,7 @@ static bool NsTrustedDll(const wchar_t *path)
                               nullptr, OPEN_EXISTING,
                               FILE_ATTRIBUTE_NORMAL, nullptr);
     if (hold == INVALID_HANDLE_VALUE) return false;
-    if (!NsTrustedDllHeld(path, hold)) { CloseHandle(hold); return false; }
+    if (!NsTrustedDllHeld(path, hold, signer_cn, product_prefix)) { CloseHandle(hold); return false; }
     g_trusted_file_handles[g_trusted_file_count++] = hold;
     return true;
 }
@@ -170,7 +180,13 @@ static bool NsTrustedDll(const wchar_t *path)
 // The checks, with the file already held open. The signature is verified
 // through that very handle; the other reads go by path, which the hold keeps
 // pointing at the same bytes.
-static bool NsTrustedDllHeld(const wchar_t *path, HANDLE hold)
+static bool NsTrustedDll(const wchar_t *path)
+{
+    return NsTrustedDllFor(path, kTrustedSignerCn, kTrustedProductPrefix);
+}
+
+static bool NsTrustedDllHeld(const wchar_t *path, HANDLE hold,
+                             const wchar_t *signer_cn, const wchar_t *product_prefix)
 {
     // ---- Authenticode -------------------------------------------------
     WINTRUST_FILE_INFO file = {};
@@ -232,7 +248,7 @@ static bool NsTrustedDllHeld(const wchar_t *path, HANDLE hold)
             {
                 if (CertGetNameStringW(leaf, CERT_NAME_SIMPLE_DISPLAY_TYPE,
                                        0, nullptr, name, len) > 0
-                    && wcscmp(name, kTrustedSignerCn) == 0)
+                    && wcscmp(name, signer_cn) == 0)
                     signer_ok = true;
                 HeapFree(GetProcessHeap(), 0, name);
             }
@@ -247,6 +263,7 @@ static bool NsTrustedDllHeld(const wchar_t *path, HANDLE hold)
     if (!chain_ok) return false;
 
     // ---- product name --------------------------------------------------
+    if (product_prefix == nullptr) return true;
     DWORD handle = 0;
     DWORD size = GetFileVersionInfoSizeW(path, &handle);
     if (size == 0) return false;
@@ -270,8 +287,8 @@ static bool NsTrustedDllHeld(const wchar_t *path, HANDLE hold)
             UINT plen = 0;
             if (VerQueryValueW(block, query, (void **)&product, &plen)
                 && product && plen > 0
-                && wcsncmp(product, kTrustedProductPrefix,
-                           wcslen(kTrustedProductPrefix)) == 0)
+                && wcsncmp(product, product_prefix,
+                           wcslen(product_prefix)) == 0)
                 product_ok = true;
         }
     }

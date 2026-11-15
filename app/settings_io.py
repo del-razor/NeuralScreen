@@ -403,6 +403,26 @@ FPS_OVERLAY_SCALE_MIN = 25
 FPS_OVERLAY_SCALE_MAX = 100
 
 
+#: The frame generation runtime: NVIDIA's DLSS (the default), or the ANR runtime
+#: from Apex Compute (fg_apex_dll, a file the user chose). The worker loads the
+#: ANR one only when its signature is Apex Compute's - see native/frame_generation.inl.
+FG_PROVIDERS = ("dlss", "apex")
+
+
+def apply_fg_provider_env(cfg: dict) -> None:
+    """The ANR runtime reaches the worker through the environment.
+
+    The worker reads NS_FG_APEX_DLL when it creates frame generation. It is set
+    only when the provider is "apex" and a file is chosen; otherwise it is
+    removed, and the worker uses the bundled DLSS runtime.
+    """
+    path = str(cfg.get("fg_apex_dll") or "")
+    if cfg.get("fg_provider") == "apex" and path:
+        os.environ["NS_FG_APEX_DLL"] = path
+    else:
+        os.environ.pop("NS_FG_APEX_DLL", None)
+
+
 def clamped_number(value, default: float, lo: float, hi: float) -> float:
     """The value as a float in [lo, hi]; the default when it is not a finite number."""
     try:
@@ -894,6 +914,10 @@ def _validate_config(cfg: dict) -> dict:
         cfg.get("fps_overlay_scale"), 100, FPS_OVERLAY_SCALE_MIN, FPS_OVERLAY_SCALE_MAX)))
     cfg["fps_overlay_x"] = clamped_number(cfg.get("fps_overlay_x"), 1.0, 0.0, 1.0)
     cfg["fps_overlay_y"] = clamped_number(cfg.get("fps_overlay_y"), 0.0, 0.0, 1.0)
+    if cfg.get("fg_provider") not in FG_PROVIDERS:
+        cfg["fg_provider"] = "dlss"
+    if not isinstance(cfg.get("fg_apex_dll"), str):
+        cfg["fg_apex_dll"] = ""
     # The fisheye lens's field of view: a number in degrees inside the range
     # the worker honours. Anything else - a string, NaN - is the default.
     fov = cfg.get("lens_fov", LENS_FOV_DEFAULT)
@@ -1332,6 +1356,8 @@ def _menu_layout_payload(cfg: dict, params: dict, monitor: int, lang: str,
         "fps_overlay_scale": int(cfg.get("fps_overlay_scale", 100)),
         "fps_overlay_x": float(cfg.get("fps_overlay_x", 1.0)),
         "fps_overlay_y": float(cfg.get("fps_overlay_y", 0.0)),
+        "fg_provider": str(cfg.get("fg_provider", "dlss")),
+        "fg_apex_dll": str(cfg.get("fg_apex_dll", "")),
         "notifications": str(cfg.get("notifications", "all")),
         "process_priority": str(cfg.get("process_priority", "normal")),
         "lens": bool(cfg.get("lens", False)),
@@ -1920,6 +1946,8 @@ def menu_payload(st) -> dict:
         "fps_overlay_scale": int(st.cfg.get("fps_overlay_scale", 100)),
         "fps_overlay_x": float(st.cfg.get("fps_overlay_x", 1.0)),
         "fps_overlay_y": float(st.cfg.get("fps_overlay_y", 0.0)),
+        "fg_provider": str(st.cfg.get("fg_provider", "dlss")),
+        "fg_apex_dll": str(st.cfg.get("fg_apex_dll", "")),
         "notifications": str(st.cfg.get("notifications", "all")),
         "process_priority": str(st.cfg.get("process_priority", "normal")),
         "lens": bool(st.cfg.get("lens", False)),

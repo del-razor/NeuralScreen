@@ -634,7 +634,7 @@ _SETTINGS_KEYS = (
     # answer "how was the program configured" and had quietly stopped
     # answering it for anything new (found in a reporter's package, #96).
     "nr_direct", "nr_passes", "residual_strength", "fps_overlay", "fps_overlay_corner",
-    "fps_overlay_scale", "fps_overlay_x", "fps_overlay_y",
+    "fps_overlay_scale", "fps_overlay_x", "fps_overlay_y", "fg_provider",
     "notifications",
     "process_priority",
     # The camera bends and tints the whole picture: a report of "everything

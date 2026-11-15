@@ -51,6 +51,8 @@
   "fps_overlay_scale": 100,
   "fps_overlay_x": 1.0,
   "fps_overlay_y": 0.0,
+  "fg_provider": "dlss",
+  "fg_apex_dll": "",
   "notifications": "all",
   "process_priority": "normal",
   "lens": false,

@@ -481,6 +481,8 @@ class OverlayMenu:
             "fps_overlay_scale": 100,
             "fps_overlay_x": 1.0,
             "fps_overlay_y": 0.0,
+            "fg_provider": "dlss",
+            "fg_apex_dll": "",
             "notifications": "all",
             "process_priority": "normal",
             # What the taskbar's minimise and close buttons do (#93).
@@ -2249,6 +2251,29 @@ class OverlayMenu:
                 toggle("fg_lite", s.get("fg_lite", "FG Lite"),
                        bool(self.state.get("fg_lite", False)),
                        hint=s.get("fg_lite_hint", ""))
+                # The runtime: NVIDIA's DLSS, or the ANR runtime from Apex
+                # Compute. For Apex the user chooses the file here; the worker
+                # loads it only with Apex's signature (see native/dll_trust.h).
+                provider = str(self.state.get("fg_provider", "dlss"))
+                segmented("fg_provider", s.get("fg_provider", "Runtime"), provider,
+                          ["dlss", "apex"],
+                          labels=[s.get("fg_provider_dlss", "DLSS"),
+                                  s.get("fg_provider_apex", "Apex")])
+                if provider == "apex" and show:
+                    apex_file = str(self.state.get("fg_apex_dll") or "")
+                    bgap = self._u(BTN_GAP)
+                    btn_w = max(self._u(120), inner_w // 3)
+                    items.append(Item("info", "fg_apex_path",
+                                      pygame.Rect(pad, cy, inner_w - btn_w - bgap, ctrl_h),
+                                      extra={"label": "",
+                                             "value": (self._elide_path(apex_file) if apex_file
+                                                       else s.get("fg_apex_none",
+                                                                  "No runtime chosen"))}))
+                    items.append(Item("button", "fg_apex_pick",
+                                      pygame.Rect(pad + inner_w - btn_w, cy, btn_w, ctrl_h),
+                                      extra={"label": s.get("fg_apex_choose", "Choose the file..."),
+                                             "small": True}))
+                    cy += ctrl_h + gap
             interlace_on = bool(self.state.get("interlace", False))
             interlace_summary = off_s
             if interlace_on:
@@ -3311,6 +3336,11 @@ class OverlayMenu:
             if value in ("every", "half", "alternate"):
                 self.state["interlace_mode"] = value
                 return [("interlace_mode", value)]
+            return []
+        if key == "fg_provider":
+            if value in ("dlss", "apex"):
+                self.state["fg_provider"] = value
+                return [("fg_provider", value)]
             return []
         if key == "fps_overlay":
             if value in ("off", "tl", "tr", "bl", "br", "custom"):

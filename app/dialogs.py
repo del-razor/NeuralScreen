@@ -167,7 +167,8 @@ OPEN_BUFFER_CHARS = 65536
 
 
 def _open_dialog_struct(parent_hwnd: int, initial_dir: str | None,
-                        title: str | None = None, multi: bool = False):
+                        title: str | None = None, multi: bool = False,
+                        file_filter: str | None = None):
     """The OPENFILENAME for "Open", and the buffer the path comes back in.
 
     Split from the call for the same reason as the save one: a modal dialog
@@ -186,7 +187,7 @@ def _open_dialog_struct(parent_hwnd: int, initial_dir: str | None,
     # The separator is chr(0), not a "\0" escape: this filter is built
     # by a patch step and a literal NUL in the source file is a
     # SyntaxError that only shows up at import time.
-    ofn.lpstrFilter = media_filter()
+    ofn.lpstrFilter = file_filter or media_filter()
     ofn.lpstrFile = ctypes.cast(buf, wintypes.LPWSTR)
     ofn.nMaxFile = len(buf)
     ofn.nFilterIndex = 1
@@ -245,6 +246,33 @@ def ask_open_paths(parent_hwnd: int, initial_dir: str | None = None,
     except Exception as exc:
         print(f"[dialogs] open dialog unavailable ({exc})", file=sys.stderr)
         return []
+
+
+def ask_open_dll(parent_hwnd: int, initial_dir: str | None = None,
+                 title: str | None = None) -> Path | None:
+    """The native "Open" dialog for one runtime DLL. None on cancel.
+
+    The filter offers the frame generation runtime's own name first, then any
+    DLL: the ANR package's file is nvngx_dlssg.dll, but a renamed copy is
+    still a DLL the signature check will judge.
+    """
+    try:
+        # Filter pairs, each NUL-terminated, and a final empty pair. The NULs
+        # are built here, not written as "\0" in a literal (see the note in
+        # _open_dialog_struct).
+        file_filter = "\x00".join([
+            "Frame generation runtime (nvngx_dlssg.dll)", "nvngx_dlssg.dll",
+            "Dynamic link libraries (*.dll)", "*.dll",
+        ]) + "\x00\x00"
+        ofn, buf = _open_dialog_struct(parent_hwnd, initial_dir, title,
+                                       multi=False, file_filter=file_filter)
+        if not ctypes.windll.comdlg32.GetOpenFileNameW(ctypes.byref(ofn)):
+            return None
+        chosen = buf.value
+        return Path(chosen) if chosen else None
+    except Exception as exc:
+        print(f"[dialogs] runtime dialog unavailable ({exc})", file=sys.stderr)
+        return None
 
 
 def pick_directory(parent_hwnd: int, title: str) -> Path | None:
