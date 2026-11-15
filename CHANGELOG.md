@@ -58,10 +58,12 @@ Scope and honesty notes:
   pick it from the complete `game/OptiScaler/custom/Apex Neural Rendering FG/dlssg`
   folder, not from a copy of the DLL alone. The worker loads it only when its
   Authenticode signature is Apex Compute, Inc.'s and it chains to a machine
-  root; NVIDIA's own check is unchanged. On an RTX 4070 SUPER ANR initialises
-  and generates frames, but in a test run the runtime released its generator
-  after one frame, without an error from either side. That is open; DLSS is
-  the default and is unchanged.
+  root; NVIDIA's own check is unchanged. On an RTX 4070 SUPER ANR generates
+  frames: four of five test runs produced about 53 generated frames each. In
+  the fifth, ANR released its generator after one frame; that run predates the
+  release trace, so its cause is not recorded. Each release now logs a
+  `[fg-trace]` line with the source line that triggered it. DLSS is the
+  default and is unchanged.
 
 ## v2.6.4 - 2026-10-27 - Still pictures in browsers and Photos stay idle, CJK text instead of boxes, a misplaced NR runtime is named
 

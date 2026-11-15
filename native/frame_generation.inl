@@ -182,8 +182,12 @@ static void StopFgPresentation()
     g_fg.history = false;
 }
 
+static int g_fg_release_site = -1;
+#define CloseFgAt() (g_fg_release_site = __LINE__, CloseFgResources())
 static void CloseFgResources()
 {
+    Log("[fg-trace] release at frame_generation.inl:%d (feature %s)", g_fg_release_site, g_fg.feature ? "live" : "none");
+    g_fg_release_site = -1;
     StopFgPresentation();
     if (g_submission_failed) return;
     if (g_fg.feature) { g_fg.release(g_fg.feature); g_fg.feature = nullptr; }
@@ -457,7 +461,7 @@ static bool EnsureFg(VideoState &v, DXGI_FORMAT format)
     const UINT w = v.upscale ? v.full_w : v.w, height = v.upscale ? v.full_h : v.hgt;
     if (g_fg.feature && g_fg.w == w && g_fg.height == height && g_fg.mw == v.w &&
         g_fg.mh == v.hgt && g_fg.format == format && g_fg.thread.joinable()) return true;
-    CloseFgResources();
+    CloseFgAt();
     if (!g_fg.module)
     {
         // ANR FG (Apex Compute): the runtime the user chose in the panel
@@ -750,11 +754,11 @@ static void ExportFgSource(VideoState &v, bool bypass)
 static constexpr int kFgHoldMs = 100;
 static bool FgHold(VideoState &v, bool bypass)
 {
-    if (!BeginCommands()) { g_fg.failed = true; CloseFgResources(); return false; }
+    if (!BeginCommands()) { g_fg.failed = true; CloseFgAt(); return false; }
     ExportFgSource(v, bypass);
     const UINT64 fence = EndCommands();
     if (!WaitFenceValue(h.fence, fence, 30000, "fg-hold"))
-    { g_fg.failed = true; CloseFgResources(); return false; }
+    { g_fg.failed = true; CloseFgAt(); return false; }
     g_fg_present_fence = fence;
     SpoutBridgeSend();
     ++g_fg.held;
@@ -770,8 +774,8 @@ static bool FgPresent(VideoState &v, ID3D12Resource *color, D3D12_RESOURCE_STATE
         // A refused multiplier stepped the ceiling down: this frame is a
         // retry, not a dead feature. Release what the failed attempt built and
         // let the next header rebuild at the lower step.
-        if (g_fg_retry) { g_fg_retry = false; CloseFgResources(); return false; }
-        g_fg.failed = true; CloseFgResources(); return false;
+        if (g_fg_retry) { g_fg_retry = false; CloseFgAt(); return false; }
+        g_fg.failed = true; CloseFgAt(); return false;
     }
     // The picture window is hidden (its target is minimised): nothing
     // presented into it reaches the screen, and a flip chain's hidden
@@ -823,7 +827,7 @@ static bool FgPresent(VideoState &v, ID3D12Resource *color, D3D12_RESOURCE_STATE
     opt.backbufferSubrectSize = opt.outputInterpSubrectSize = {g_fg.w, g_fg.height};
     NVSDK_NGX_D3D12_DLSSG_Eval_Params ep = {};
     ep.pBackbuffer = color; ep.pMVecs = v.mv.tex; ep.pDepth = g_fg.depth.tex;
-    if (!BeginCommands()) { g_fg.failed = true; CloseFgResources(); return false; }
+    if (!BeginCommands()) { g_fg.failed = true; CloseFgAt(); return false; }
     const bool profile_fg = ProfileGpuBegin(PS_FG);
     bool allow_interpolation = true;
     p->Set(NVSDK_NGX_DLSSG_Parameter_BackbufferFrameID, static_cast<unsigned long long>(g_fg.sequence + 1));
@@ -868,9 +872,9 @@ static bool FgPresent(VideoState &v, ID3D12Resource *color, D3D12_RESOURCE_STATE
             // retry flag here: the create already succeeded, so the next frame
             // is an ordinary fresh build at the lower step and its own failure
             // must read as one.
-            if (FgStepDown(result)) { CloseFgResources(); return false; }
+            if (FgStepDown(result)) { CloseFgAt(); return false; }
             Log("[fg] Evaluate failed 0x%08X; falling back", result);
-            g_fg.failed = true; CloseFgResources(); return false;
+            g_fg.failed = true; CloseFgAt(); return false;
         }
     }
     if (profile_fg) ProfileGpuEnd(PS_FG);
@@ -954,7 +958,7 @@ static bool FgPresent(VideoState &v, ID3D12Resource *color, D3D12_RESOURCE_STATE
     ExportFgSource(v, bypass);
     const UINT64 fg_fence = EndCommands();
     if (!ProfileWait(PS_FG, fg_fence, 30000, "fg-evaluate"))
-    { g_fg.failed = true; CloseFgResources(); return false; }
+    { g_fg.failed = true; CloseFgAt(); return false; }
     g_fg_present_fence = fg_fence;
     BYTE *disabled = nullptr;
     D3D12_RANGE read = {0, g_fg_count * 4}, written = {0, 0};
@@ -997,7 +1001,7 @@ static void ConfigureFgFrame(uint32_t flags)
     const unsigned count = std::min(requested, g_fg_count_limit);
     const bool lite = (flags & FRAME_FLAG_FG_LITE) != 0;
     if (g_fg_ui_enabled == enabled && g_fg_count == count && g_fg_lite == lite) return;
-    CloseFgResources();
+    CloseFgAt();
     // A fresh switch-on is a fresh attempt: the ceiling goes back to the DLSS 4.5
     // maximum and the user's own choice is asked for again. A step this card
     // refused earlier is worth exactly one retry after a provider or driver
